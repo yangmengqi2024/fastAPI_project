@@ -16,7 +16,7 @@ def get_database_connection():
     connection = pymysql.connect(  # 当调用get_db_connection()时，这个函数内部会使用pymysql.connect(...)方法去连接数据库
         host='localhost',
         user='root',
-        password='',
+        password='DB_PASSWORD',
         database='fastapi_auth_project'
     )
     return connection
