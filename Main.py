@@ -3,6 +3,10 @@ from fastapi import HTTPException
 import pymysql
 import bcrypt
 import random
+import smtplib  # 用于连接 SMTP 服务器并发送邮件
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText  # 文本编辑
+from Password_config import DB_PASSWORD, Email_password
 
 app = FastAPI()
 
@@ -16,7 +20,7 @@ def get_database_connection():
     connection = pymysql.connect(  # 当调用get_db_connection()时，这个函数内部会使用pymysql.connect(...)方法去连接数据库
         host='localhost',
         user='root',
-        password='DB_PASSWORD',
+        password=DB_PASSWORD,
         database='fastapi_auth_project'
     )
     return connection
@@ -96,7 +100,47 @@ def login_user(email: str, password: str):
 verification_codes = {}
 
 
-# 定义一个验证码字典，
+# 定义一个验证码字典，用以储存验证码
+
+def send_verification_email(email: str, verification_code: str):  # 先定义发送验证码函数，后续调用
+    # 设置 SMTP 服务器信息
+    # (发件人) -> SMTP服务器(邮局) -> 收件人的邮件服务器 -> 收件人
+    smtp_server = 'smtp.gmail.com'  # 服务器地址（相当于邮局地址）
+    smtp_port = 587  # 端口号（相当于服务窗口号）
+    smtp_username = 'yangmengqi.fastapi@gmail.com'  # Gmail 地址
+    smtp_password = Email_password
+
+    # 创建邮件对象
+    msg = MIMEMultipart()
+    # 拿出一个大信封（MIMEMultipart）
+    msg['From'] = smtp_username
+    msg['To'] = email
+    msg['Subject'] = 'Email Verification Code'
+    body = f'Your verification code is: {verification_code}'
+    msg.attach(MIMEText(body, 'plain'))
+    # 将写完的文本放入一封信（MIMEText文本）
+    # 把正文内容附加到邮件中 'plain' 表示纯文本格式
+
+    #  接下来任务: 连接 SMTP 服务器、发送邮件
+    server = None  # 先初始化为 None，准备开始新板块
+    try:
+
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        # smtplib.SMTP()：这是 Python 标准库中的一个函数，用于创建一个SMTP 客户端对象，以便与 SMTP 服务器通信
+        # server 变成 SMTP 对象
+        server.starttls()  # 启动 TLS（传输层安全协议）加密，确保数据在服务器之间传输时是加密的
+        server.login(smtp_username, smtp_password)  # 登录 SMTP 服务器
+        # 通过这一步，SMTP 服务器可以验证用户有权限从这个邮箱发送邮件
+
+        # 发送邮件
+        server.send_message(msg)
+        print(f'Verification email sent to {email}')
+    except Exception as e:
+        print(f'Failed to send email: {str(e)}')
+    finally:
+        if server:  # 如果server是有效的SMTP对象
+            server.quit()  # 然后关闭连接
+
 
 @app.post("/register_with_verification")
 # 客户端发送 POST 请求到"/register_with_verification"的时候，服务器会调用这个函数
@@ -106,6 +150,7 @@ def register_with_verification(email: str, password: str):
     verification_codes[email] = verification_code
     # 通过方括号 [] 指定字典中的一个键（email）。如果字典中没有这个键，就会添加一个键值对；如果已经存在，就会更新这个键对应的值
     # 在verification_codes字典中，email是键，verification_code是值，方括号 [] 用于将这个验证码存储到对应的邮箱
+    send_verification_email(email, str(verification_code))
 
     print(f"Verification code for {email}: {verification_code}")
 
