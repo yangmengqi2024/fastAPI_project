@@ -11,6 +11,11 @@ from Password_config import DB_PASSWORD, Email_password
 app = FastAPI()
 
 
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+
+
 # 使用 FastAPI 的用户认证系统
 
 # 数据库连接配置
